@@ -2,6 +2,8 @@
 
 NTSTATUS FFGameCpyMem(IN PCOPY_MEMORY pCopy)
 {
+	DPRINT("ffgame: %s: pid=%d, targetPtr=0x%08x -> localPtr=0x%08x", __FUNCTION__, pCopy->pid, pCopy->localbuf, pCopy->targetPtr);
+
 	NTSTATUS status = STATUS_SUCCESS;
 	PEPROCESS pProcess = NULL, pSourceProc = NULL, pTargetProc = NULL;
 	PVOID pSource = NULL, pTarget = NULL;
