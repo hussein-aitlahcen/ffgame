@@ -37,6 +37,10 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING Registry
 		DPRINT("ffgame: %s: IoCreateSymbolicLink failed with status 0x%X\n", __FUNCTION__, status);
 		IoDeleteDevice(deviceObject);
 	}
+	else
+	{
+		DPRINT("ffgame: %s: loaded sucessfully", __FUNCTION__);
+	}
 
 	return status;
 }
@@ -48,6 +52,8 @@ VOID FFGameUnload(IN PDRIVER_OBJECT DriverObject)
 	RtlUnicodeStringInit(&deviceLinkUnicodeString, DOS_DEVICE_NAME);
 	IoDeleteSymbolicLink(&deviceLinkUnicodeString);
 	IoDeleteDevice(DriverObject->DeviceObject);
+
+	DPRINT("ffgame: %s: unloaded sucessfully", __FUNCTION__);
 
 	return;
 }
