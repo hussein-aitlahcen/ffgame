@@ -26,19 +26,16 @@ namespace _0xFFGame.Control
             public int z;
         }
 
-        static unsafe void Main(string[] args)
+        static void Main(string[] args)
         {
             using (var ffgame = new FFGameDriver(Path.GetFullPath("0xFFGame.Drived.sys")))
             {
-                if (ffgame.LoadDeviceDriver())
-                {
-                    ffgame.OpenDevice();
-                    var pointer = Marshal.StringToHGlobalUni("Hello FFGame !");
-                    var pid = Process.GetProcesses().First(p => p.ProcessName == "notepad").Id;
-                    ffgame.CopyMemory(new CopyMemory((ulong)pointer, 0x04C9D90, 26,
-                        (uint)pid, true));
-                }
-                ffgame.UnloadDeviceDriver();
+                var pointer = Marshal.StringToHGlobalUni("Hello FFGame !");
+                var target = Marshal.AllocHGlobal(30);
+                var pid = Process.GetCurrentProcess().Id;
+                ffgame.CopyMemory(new CopyMemory((ulong)pointer, (ulong)target, 30,
+                    (uint)pid, true));
+                var x = Marshal.PtrToStringUni(target);
             }
         }
     }

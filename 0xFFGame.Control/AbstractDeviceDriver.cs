@@ -29,9 +29,11 @@ namespace _0xFFGame.Control
             FileDevice = fileDevice;
             DriverName = name;
             DriverPath = path;
+
+            OpenDevice();
         }
 
-        public long ControlCode(long functionId)
+        private long ControlCode(long functionId)
         {
             return FileDevice << 16 | FILE_ACCESS << 14 | functionId << 2 | METHOD;
         }
@@ -42,7 +44,7 @@ namespace _0xFFGame.Control
             Dispose();
         }
 
-        public bool LoadDeviceDriver()
+        private bool LoadDeviceDriver()
         {
             var scHandle = OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
             if (scHandle == INVALID_HANDLE_VALUE)
@@ -74,12 +76,13 @@ namespace _0xFFGame.Control
             return false;
         }
 
-        internal bool UnloadDeviceDriver()
+        private bool UnloadDeviceDriver()
         {
             var ret = 0;
             if (m_fileHandle != IntPtr.Zero && m_fileHandle != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(m_fileHandle);
+                m_fileHandle = IntPtr.Zero;
             }
             if ((ret = StopService()) == 0)
             {
@@ -106,20 +109,22 @@ namespace _0xFFGame.Control
         private int ExecuteSCMOperationOnDriver(string
             operation)
         {
-            var path = new ManagementPath();
-            path.Server = ".";
-            path.NamespacePath = @"root\CIMV2";
-            path.RelativePath = @"Win32_BaseService.Name='" + DriverName + "'";
+            var path = new ManagementPath
+            {
+                Server = ".",
+                NamespacePath = @"root\CIMV2",
+                RelativePath = @"Win32_BaseService.Name='" + DriverName + "'"
+            };
             using (var o = new ManagementObject(path))
             {
-                var outParams = o.InvokeMethod(operation,
-                    null, null);
+                var outParams = o.InvokeMethod(operation, null, null);
                 return Convert.ToInt32(outParams.Properties["ReturnValue"].Value);
             }
         }
 
-        public void OpenDevice()
+        private void OpenDevice()
         {
+            LoadDeviceDriver();
             m_fileHandle = CreateFile("\\\\.\\" + DriverName, 
                 FileAccess.ReadWrite, FileShare.ReadWrite, 
                 IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
@@ -134,15 +139,11 @@ namespace _0xFFGame.Control
 
         public void Dispose()
         {
-            if (m_fileHandle != INVALID_HANDLE_VALUE)
-            {
-                m_fileHandle = INVALID_HANDLE_VALUE;
-                CloseHandle(m_fileHandle);
-            }
+            UnloadDeviceDriver();
             GC.SuppressFinalize(this);
         }
 
-        public void DeviceIoControl<T>(long functionId, T input)
+        protected void DeviceIoControl<T>(long functionId, T input)
         {
             DeviceIoControlHelper.InvokeIoControl(new SafeFileHandle(m_fileHandle, false), (IOControlCode)ControlCode(functionId), input);
         }
