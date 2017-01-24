@@ -2,6 +2,7 @@
 
 #include <ntifs.h>
 #include <ntstrsafe.h>
+#include <wsk.h>
 
 NTKERNELAPI
 NTSTATUS
@@ -28,13 +29,19 @@ MmCopyVirtualMemory(
 
 #define IOCTL_FFGAME_COPY_MEMORY  (ULONG)CTL_CODE(FILE_DEVICE_FFGAME, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 
-#pragma pack(1)
+#pragma pack(push, 1)
 typedef struct _copy_memory_t
 {
-	ULONGLONG localbuf;
-	ULONGLONG targetPtr;
-	ULONGLONG size;
-	ULONG     pid;
-	BOOLEAN   write;
+	ULONGLONG LocalPtr;
+	ULONGLONG TargetPtr;
+	ULONGLONG PtrSize;
+	ULONG     TargetProcessId;
+	BOOLEAN   Write;
 } COPY_MEMORY, *PCOPY_MEMORY;
-#pragma pop()
+
+typedef struct _inject_dll_t
+{
+	WCHAR ProcessName[64];
+	WCHAR FullDllPath[512];
+} INJECT_DLL, *PINJECT_DLL;
+#pragma pack(pop)
