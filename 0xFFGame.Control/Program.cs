@@ -30,12 +30,9 @@ namespace _0xFFGame.Control
         {
             using (var ffgame = new FFGameDriver(Path.GetFullPath("0xFFGame.Drived.sys")))
             {
-                var pointer = Marshal.StringToHGlobalUni("Hello FFGame !");
-                var target = Marshal.AllocHGlobal(30);
-                var pid = Process.GetCurrentProcess().Id;
-                ffgame.CopyMemory(new CopyMemory((ulong)pointer, (ulong)target, 30,
-                    (uint)pid, true));
-                var x = Marshal.PtrToStringUni(target);
+                var processName = Marshal.StringToHGlobalUni("ETDCtrl.exe");
+                var dllPath = Marshal.StringToHGlobalUni(Path.GetFullPath("0xFFGame.Host.dll"));
+                ffgame.InjectDll(new InjectDll(processName, dllPath));
             }
         }
     }

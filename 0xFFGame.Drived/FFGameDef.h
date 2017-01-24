@@ -2,7 +2,6 @@
 
 #include <ntifs.h>
 #include <ntstrsafe.h>
-#include <wsk.h>
 
 NTKERNELAPI
 NTSTATUS
@@ -17,6 +16,20 @@ MmCopyVirtualMemory(
 	OUT PSIZE_T NumberOfBytesCopied
 );
 
+NTKERNELAPI
+NTSTATUS
+NTAPI
+PsLookupProcessThreadByCid(
+	IN PCLIENT_ID ClientId,
+	OUT PEPROCESS * Process,
+	OUT PETHREAD * Thread
+);
+
+NTKERNELAPI
+BOOLEAN
+NTAPI
+PsIsProtectedProcess(IN PEPROCESS Process);
+
 #define DPRINT(format, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, format, __VA_ARGS__)
 
 #define FFGAME_DEVICE_NAME L"ffgame"
@@ -28,6 +41,7 @@ MmCopyVirtualMemory(
 #define FILE_DEVICE_FFGAME 0x8888
 
 #define IOCTL_FFGAME_COPY_MEMORY  (ULONG)CTL_CODE(FILE_DEVICE_FFGAME, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_FFGAME_INJECT_DLL (ULONG)CTL_CODE(FILE_DEVICE_FFGAME, 0x802, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 
 #pragma pack(push, 1)
 typedef struct _copy_memory_t
@@ -41,7 +55,7 @@ typedef struct _copy_memory_t
 
 typedef struct _inject_dll_t
 {
-	WCHAR ProcessName[64];
-	WCHAR FullDllPath[512];
+	PWCHAR ProcessName;
+	PWCHAR FullDllPath;
 } INJECT_DLL, *PINJECT_DLL;
 #pragma pack(pop)

@@ -39,7 +39,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING Registry
 	}
 	else
 	{
-		DPRINT("ffgame: %s: loaded sucessfully", __FUNCTION__);
+		DPRINT("ffgame: %s: loaded sucessfully\n", __FUNCTION__);
 	}
 
 	return status;
@@ -53,7 +53,7 @@ VOID FFGameUnload(IN PDRIVER_OBJECT DriverObject)
 	IoDeleteSymbolicLink(&deviceLinkUnicodeString);
 	IoDeleteDevice(DriverObject->DeviceObject);
 
-	DPRINT("ffgame: %s: unloaded sucessfully", __FUNCTION__);
+	DPRINT("ffgame: %s: unloaded sucessfully\n", __FUNCTION__);
 
 	return;
 }
@@ -91,6 +91,13 @@ NTSTATUS FFGameDispatcher(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp)
 						Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
 					break;
 
+				case IOCTL_FFGAME_INJECT_DLL:
+					if(inputBufferLength >= sizeof(INJECT_DLL) && ioBuffer)
+						Irp->IoStatus.Status = FFInjectDll((PINJECT_DLL)ioBuffer);
+					else
+						Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+					break;
+
 				default:
 					DPRINT("ffgame: %s: Unknown IRP_MJ_DEVICE_CONTROL 0x%X\n", __FUNCTION__, ioControlCode);
 					Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
@@ -98,6 +105,9 @@ NTSTATUS FFGameDispatcher(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp)
 			}
 		}
 	}
+
+	if(Irp->IoStatus.Status == STATUS_INVALID_PARAMETER)
+		DPRINT("ffgame: %s: invalid input length %d\n", __FUNCTION__, inputBufferLength);
 
 	status = Irp->IoStatus.Status;
 	IoCompleteRequest(Irp, IO_NO_INCREMENT);

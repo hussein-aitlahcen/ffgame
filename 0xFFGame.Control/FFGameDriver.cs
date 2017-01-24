@@ -1,12 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace _0xFFGame.Control
 {
+    /*
+    typedef struct _copy_memory_t
+    {
+        ULONGLONG LocalPtr;
+        ULONGLONG TargetPtr;
+        ULONGLONG PtrSize;
+        ULONG TargetProcessId;
+        BOOLEAN Write;
+    }
+    COPY_MEMORY, * PCOPY_MEMORY;
+
+    typedef struct _inject_dll_t
+    {
+        WCHAR ProcessName[64];
+        WCHAR FullDllPath[512];
+    }
+    INJECT_DLL, * PINJECT_DLL;
+    */
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
     public struct CopyMemory
     {
@@ -25,9 +45,25 @@ namespace _0xFFGame.Control
         }
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
+    public struct InjectDll
+    {
+        public readonly ulong ProcessName;
+        public readonly ulong FullDllPath;
+        public InjectDll(IntPtr pName, IntPtr dllPath)
+        {
+            ProcessName = (ulong)pName; //pName;
+            FullDllPath = (ulong)dllPath; //dllPath;
+            //ProcessName = pName;
+            //FullDllPath = dllPath;
+        }
+    }
+
+
     public enum FFGameFunction
     {
-        CopyMemory = 0x801
+        CopyMemory = 0x801,
+        InjectDll = 0x802
     }
 
     public sealed class FFGameDriver : AbstractDeviceDriver
@@ -37,6 +73,11 @@ namespace _0xFFGame.Control
 
         public FFGameDriver(string path) : base(FILE_DEVICE_FFGAME, DRIVER_NAME, path)
         {
+        }
+
+        public void InjectDll(InjectDll input)
+        {
+            FFGameDeviceIoControl(FFGameFunction.InjectDll, input);
         }
 
         public void CopyMemory(CopyMemory input)

@@ -34,23 +34,81 @@ typedef enum _SYSTEM_INFORMATION_CLASS {
 
 } SYSTEM_INFORMATION_CLASS, *PSYSTEM_INFORMATION_CLASS;
 
+typedef struct _SYSTEM_MODULE_INFORMATION_ENTRY
+{
+	ULONG  Unknown1;
+	ULONG  Unknown2;
+#ifdef _WIN64
+	ULONG Unknown3;
+	ULONG Unknown4;
+#endif
+	PVOID  Base;
+	ULONG  Size;
+	ULONG  Flags;
+	USHORT  Index;
+	USHORT  NameLength;
+	USHORT  LoadCount;
+	USHORT  PathLength;
+	CHAR  ImageName[256];
+} SYSTEM_MODULE_INFORMATION_ENTRY, *PSYSTEM_MODULE_INFORMATION_ENTRY;
+
+typedef struct _SYSTEM_MODULE_INFORMATION
+{
+	ULONG Count;
+	SYSTEM_MODULE_INFORMATION_ENTRY Module[1];
+} SYSTEM_MODULE_INFORMATION, *PSYSTEM_MODULE_INFORMATION;
 
 typedef struct _SYSTEM_THREAD {
 
-	LARGE_INTEGER KernelTime; LARGE_INTEGER UserTime; LARGE_INTEGER CreateTime;
-	ULONG WaitTime; PVOID StartAddress; CLIENT_ID ClientId; KPRIORITY Priority;
-	LONG BasePriority; ULONG ContextSwitchCount; ULONG State; KWAIT_REASON WaitReason;
-
+	LARGE_INTEGER KernelTime; 
+	LARGE_INTEGER UserTime; 
+	LARGE_INTEGER CreateTime;
+	ULONG WaitTime; 
+	PVOID StartAddress; 
+	CLIENT_ID ClientId;
+	KPRIORITY Priority;
+	LONG BasePriority; 
+	ULONG ContextSwitchCount; 
+	ULONG State;
+	KWAIT_REASON WaitReason;
 } SYSTEM_THREAD, *PSYSTEM_THREAD;
 
 typedef struct _SYSTEM_PROCESS_INFORMATION {
-
-	ULONG NextEntryOffset; ULONG NumberOfThreads; LARGE_INTEGER Reserved[3];
-	LARGE_INTEGER CreateTime; LARGE_INTEGER UserTime; LARGE_INTEGER KernelTime;
-	UNICODE_STRING ImageName; KPRIORITY BasePriority; HANDLE ProcessId;
-	HANDLE InheritedFromProcessId; ULONG HandleCount; ULONG Reserved2[2];
-	ULONG PrivatePageCount; VM_COUNTERS VirtualMemoryCounters; IO_COUNTERS IoCounters; SYSTEM_THREAD Threads[1];
-
+	ULONG NextEntryOffset;
+	ULONG NumberOfThreads;
+	LARGE_INTEGER WorkingSetPrivateSize;
+	ULONG HardFaultCount;
+	ULONG NumberOfThreadsHighWatermark;
+	ULONGLONG CycleTime;
+	LARGE_INTEGER CreateTime;
+	LARGE_INTEGER UserTime;
+	LARGE_INTEGER KernelTime;
+	UNICODE_STRING ImageName;
+	KPRIORITY BasePriority;
+	HANDLE UniqueProcessId;
+	HANDLE InheritedFromUniqueProcessId;
+	ULONG HandleCount;
+	ULONG SessionId;
+	ULONG_PTR UniqueProcessKey;
+	SIZE_T PeakVirtualSize;
+	SIZE_T VirtualSize;
+	ULONG PageFaultCount;
+	SIZE_T PeakWorkingSetSize;
+	SIZE_T WorkingSetSize;
+	SIZE_T QuotaPeakPagedPoolUsage;
+	SIZE_T QuotaPagedPoolUsage;
+	SIZE_T QuotaPeakNonPagedPoolUsage;
+	SIZE_T QuotaNonPagedPoolUsage;
+	SIZE_T PagefileUsage;
+	SIZE_T PeakPagefileUsage;
+	SIZE_T PrivatePageCount;
+	LARGE_INTEGER ReadOperationCount;
+	LARGE_INTEGER WriteOperationCount;
+	LARGE_INTEGER OtherOperationCount;
+	LARGE_INTEGER ReadTransferCount;
+	LARGE_INTEGER WriteTransferCount;
+	LARGE_INTEGER OtherTransferCount;
+	SYSTEM_THREAD Threads[1];
 } SYSTEM_PROCESS_INFORMATION, *PSYSTEM_PROCESS_INFORMATION;
 
 typedef VOID(NTAPI *PKNORMAL_ROUTINE)
