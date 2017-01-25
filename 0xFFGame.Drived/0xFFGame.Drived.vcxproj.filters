@@ -25,6 +25,9 @@
     <ClInclude Include="FFGameFunc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FFStruct.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FFGameFunc.c">

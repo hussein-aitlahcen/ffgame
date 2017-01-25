@@ -30,6 +30,27 @@ BOOLEAN
 NTAPI
 PsIsProtectedProcess(IN PEPROCESS Process);
 
+
+NTKERNELAPI
+PPEB
+NTAPI
+PsGetProcessPeb(IN PEPROCESS Process);
+
+NTKERNELAPI
+PVOID
+NTAPI
+PsGetThreadTeb(IN PETHREAD Thread);
+
+NTKERNELAPI
+PVOID
+NTAPI
+PsGetProcessWow64Process(IN PEPROCESS Process);
+
+NTKERNELAPI
+PVOID
+NTAPI
+PsGetCurrentProcessWow64Process();
+
 #define DPRINT(format, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, format, __VA_ARGS__)
 
 #define FFGAME_DEVICE_NAME L"ffgame"

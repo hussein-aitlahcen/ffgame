@@ -1,42 +1,258 @@
 #include "FFGameFunc.h"
 
-NTSTATUS FFGameCpyMem(IN PCOPY_MEMORY pCopy)
+NTSTATUS FFSafeAllocateString(OUT PUNICODE_STRING result, IN USHORT size)
 {
-	DPRINT("ffgame: %s: pid=%d, targetPtr=0x%08x -> localPtr=0x%X\n", __FUNCTION__, pCopy->TargetProcessId, pCopy->LocalPtr, pCopy->TargetPtr);
+	ASSERT(result != NULL);
+	if (result == NULL || size == 0)
+		return STATUS_INVALID_PARAMETER;
 
-	NTSTATUS Status = STATUS_SUCCESS;
-	PEPROCESS pProcess = NULL, pSourceProc = NULL, pTargetProc = NULL;
-	PVOID pSource = NULL, pTarget = NULL;
+	result->Buffer = ExAllocatePool(PagedPool, size);
+	result->Length = 0;
+	result->MaximumLength = size;
 
-	Status = PsLookupProcessByProcessId((HANDLE)pCopy->TargetProcessId, &pProcess);
+	if (result->Buffer)
+		RtlZeroMemory(result->Buffer, size);
+	else
+		return STATUS_NO_MEMORY;
 
-	if (NT_SUCCESS(Status))
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS FFSafeInitString(OUT PUNICODE_STRING result, IN PUNICODE_STRING source)
+{
+	ASSERT(result != NULL && source != NULL);
+	if (result == NULL || source == NULL || source->Buffer == NULL)
+		return STATUS_INVALID_PARAMETER;
+
+	// No data to copy
+	if (source->Length == 0)
 	{
-		SIZE_T bytes = 0;
-		if (pCopy->Write != FALSE)
+		result->Length = result->MaximumLength = 0;
+		result->Buffer = NULL;
+		return STATUS_SUCCESS;
+	}
+
+	result->Buffer = ExAllocatePool(PagedPool, source->MaximumLength);
+	result->Length = source->Length;
+	result->MaximumLength = source->MaximumLength;
+
+	memcpy(result->Buffer, source->Buffer, source->Length);
+
+	return STATUS_SUCCESS;
+}
+
+LONG FFSafeSearchString(IN PUNICODE_STRING source, IN PUNICODE_STRING target, IN BOOLEAN CaseInSensitive)
+{
+	ASSERT(source != NULL && target != NULL);
+	if (source == NULL || target == NULL || source->Buffer == NULL || target->Buffer == NULL)
+		return STATUS_INVALID_PARAMETER;
+
+	// Size mismatch
+	if (source->Length < target->Length)
+		return -1;
+
+	USHORT diff = source->Length - target->Length;
+	for (USHORT i = 0; i < diff; i++)
+	{
+		if (RtlCompareUnicodeStrings(
+			source->Buffer + i / sizeof(WCHAR),
+			target->Length / sizeof(WCHAR),
+			target->Buffer,
+			target->Length / sizeof(WCHAR),
+			CaseInSensitive
+		) == 0)
 		{
-			pSourceProc = PsGetCurrentProcess();
-			pTargetProc = pProcess;
-			pSource = (PVOID)pCopy->LocalPtr;
-			pTarget = (PVOID)pCopy->TargetPtr;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+NTSTATUS FFStripPath(IN PUNICODE_STRING path, OUT PUNICODE_STRING name)
+{
+	ASSERT(path != NULL && name);
+	if (path == NULL || name == NULL)
+		return STATUS_INVALID_PARAMETER;
+
+	// Empty string
+	if (path->Length < 2)
+	{
+		*name = *path;
+		return STATUS_NOT_FOUND;
+	}
+
+	for (USHORT i = (path->Length / sizeof(WCHAR)) - 1; i != 0; i--)
+	{
+		if (path->Buffer[i] == L'\\' || path->Buffer[i] == L'/')
+		{
+			name->Buffer = &path->Buffer[i + 1];
+			name->Length = name->MaximumLength = path->Length - (i + 1) * sizeof(WCHAR);
+			return STATUS_SUCCESS;
+		}
+	}
+
+	*name = *path;
+	return STATUS_NOT_FOUND;
+}
+
+NTSTATUS FFStripFilename(IN PUNICODE_STRING path, OUT PUNICODE_STRING dir)
+{
+	ASSERT(path != NULL && dir);
+	if (path == NULL || dir == NULL)
+		return STATUS_INVALID_PARAMETER;
+
+	// Empty string
+	if (path->Length < 2)
+	{
+		*dir = *path;
+		return STATUS_NOT_FOUND;
+	}
+
+	for (USHORT i = (path->Length / sizeof(WCHAR)) - 1; i != 0; i--)
+	{
+		if (path->Buffer[i] == L'\\' || path->Buffer[i] == L'/')
+		{
+			dir->Buffer = path->Buffer;
+			dir->Length = dir->MaximumLength = i * sizeof(WCHAR);
+			return STATUS_SUCCESS;
+		}
+	}
+
+	*dir = *path;
+	return STATUS_NOT_FOUND;
+}
+
+NTSTATUS FFFileExists(IN PUNICODE_STRING path)
+{
+	HANDLE hFile = NULL;
+	IO_STATUS_BLOCK statusBlock = { 0 };
+	OBJECT_ATTRIBUTES obAttr = { 0 };
+	InitializeObjectAttributes(&obAttr, path, OBJ_KERNEL_HANDLE, NULL, NULL);
+
+	NTSTATUS status = ZwCreateFile(
+		&hFile, FILE_READ_DATA | SYNCHRONIZE, &obAttr,
+		&statusBlock, NULL, FILE_ATTRIBUTE_NORMAL,
+		FILE_SHARE_READ, FILE_OPEN, FILE_SYNCHRONOUS_IO_NONALERT, NULL, 0
+	);
+
+	if (NT_SUCCESS(status))
+		ZwClose(hFile);
+
+	return status;
+}
+
+NTSTATUS FFSearchPattern(IN PCUCHAR pattern, IN UCHAR wildcard, IN ULONG_PTR len, IN const VOID* base, IN ULONG_PTR size, OUT PVOID* ppFound)
+{
+	ASSERT(ppFound != NULL && pattern != NULL && base != NULL);
+	if (ppFound == NULL || pattern == NULL || base == NULL)
+		return STATUS_INVALID_PARAMETER;
+
+	for (ULONG_PTR i = 0; i < size - len; i++)
+	{
+		BOOLEAN found = TRUE;
+		for (ULONG_PTR j = 0; j < len; j++)
+		{
+			if (pattern[j] != wildcard && pattern[j] != ((PCUCHAR)base)[i + j])
+			{
+				found = FALSE;
+				break;
+			}
+		}
+
+		if (found != FALSE)
+		{
+			*ppFound = (PUCHAR)base + i;
+			return STATUS_SUCCESS;
+		}
+	}
+
+	return STATUS_NOT_FOUND;
+}
+
+PVOID FFGetUserModule(IN PEPROCESS pProcess, IN PUNICODE_STRING ModuleName, IN BOOLEAN isWow64)
+{
+	ASSERT(pProcess != NULL);
+	if (pProcess == NULL)
+		return NULL;
+
+	__try
+	{
+		LARGE_INTEGER time = { 0 };
+		time.QuadPart = -250ll * 10 * 1000;     // 250 msec.
+
+												// Wow64 process
+		if (isWow64)
+		{
+			PPEB32 pPeb32 = (PPEB32)PsGetProcessWow64Process(pProcess);
+			if (pPeb32 == NULL)
+			{
+				DPRINT("ffgame: %s: No PEB present. Aborting\n", __FUNCTION__);
+				return NULL;
+			}
+
+			for (INT i = 0; !pPeb32->Ldr && i < 10; i++)
+			{
+				DPRINT("ffgame: %s: Loader not intialized, waiting\n", __FUNCTION__);
+				KeDelayExecutionThread(KernelMode, TRUE, &time);
+			}
+
+			if (!pPeb32->Ldr)
+			{
+				DPRINT("ffgame: %s: Loader was not intialized in time. Aborting\n", __FUNCTION__);
+				return NULL;
+			}
+
+			for (PLIST_ENTRY32 pListEntry = (PLIST_ENTRY32)((PPEB_LDR_DATA32)pPeb32->Ldr)->InLoadOrderModuleList.Flink;
+				pListEntry != &((PPEB_LDR_DATA32)pPeb32->Ldr)->InLoadOrderModuleList;
+				pListEntry = (PLIST_ENTRY32)pListEntry->Flink)
+			{
+				UNICODE_STRING ustr;
+				PLDR_DATA_TABLE_ENTRY32 pEntry = CONTAINING_RECORD(pListEntry, LDR_DATA_TABLE_ENTRY32, InLoadOrderLinks);
+
+				RtlUnicodeStringInit(&ustr, (PWCH)pEntry->BaseDllName.Buffer);
+
+				if (RtlCompareUnicodeString(&ustr, ModuleName, TRUE) == 0)
+					return (PVOID)pEntry->DllBase;
+			}
 		}
 		else
 		{
-			pSourceProc = pProcess;
-			pTargetProc = PsGetCurrentProcess();
-			pSource = (PVOID)pCopy->TargetPtr;
-			pTarget = (PVOID)pCopy->LocalPtr;
+			PPEB pPeb = PsGetProcessPeb(pProcess);
+			if (!pPeb)
+			{
+				DPRINT("ffgame: %s: No PEB present. Aborting\n", __FUNCTION__);
+				return NULL;
+			}
+
+			for (INT i = 0; !pPeb->Ldr && i < 10; i++)
+			{
+				DPRINT("ffgame: %s: Loader not intialiezd, waiting\n", __FUNCTION__);
+				KeDelayExecutionThread(KernelMode, TRUE, &time);
+			}
+
+			if (!pPeb->Ldr)
+			{
+				DPRINT("ffgame: %s: Loader was not intialiezd in time. Aborting\n", __FUNCTION__);
+				return NULL;
+			}
+
+			for (PLIST_ENTRY pListEntry = pPeb->Ldr->InLoadOrderModuleList.Flink;
+				pListEntry != &pPeb->Ldr->InLoadOrderModuleList;
+				pListEntry = pListEntry->Flink)
+			{
+				PLDR_DATA_TABLE_ENTRY pEntry = CONTAINING_RECORD(pListEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+				if (RtlCompareUnicodeString(&pEntry->BaseDllName, ModuleName, TRUE) == 0)
+					return pEntry->DllBase;
+			}
 		}
-
-		Status = MmCopyVirtualMemory(pSourceProc, pSource, pTargetProc, pTarget, pCopy->PtrSize, KernelMode, &bytes);
 	}
-	else
-		DPRINT("ffgame: %s: PsLookupProcessByProcessId failed with status 0x%X\n", __FUNCTION__, Status);
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		DPRINT("ffgame: %s: Exception, Code: 0x%X\n", __FUNCTION__, GetExceptionCode());
+	}
 
-	if (pProcess)
-		ObDereferenceObject(pProcess);
-
-	return Status;
+	return NULL;
 }
 
 NTSTATUS FFLookupProcessThread(IN HANDLE pid, OUT PETHREAD* ppThread)
@@ -152,91 +368,41 @@ exit:
 	return ProcessId;
 }
 
-PVOID GetProcedureAddressByHash(PVOID pvBase, PCHAR Name)
+VOID FFAPCKernelRoutine(PKAPC pkaApc, PKNORMAL_ROUTINE* NormalRoutine, PVOID* NormalContext, PVOID* FirstArgument, PVOID* SecondArgument)
 {
-	PIMAGE_NT_HEADERS pImgNtHeaders;
-	PIMAGE_EXPORT_DIRECTORY pImgDirExport;
-	PDWORD pdwNames;
-	PDWORD pdwProcedures;
-	PWORD pdwOrdinals;
-	DWORD i;
-	pImgNtHeaders = (PIMAGE_NT_HEADERS)((DWORD_PTR)(((PIMAGE_DOS_HEADER)pvBase)->e_lfanew) + (DWORD_PTR)pvBase);
-	pImgDirExport = (PIMAGE_EXPORT_DIRECTORY)((DWORD_PTR)(pImgNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress) + (DWORD_PTR)pvBase);
-	pdwNames = MAKE_PTR(pvBase, pImgDirExport->AddressOfNames, PDWORD);
-	pdwProcedures = MAKE_PTR(pvBase, pImgDirExport->AddressOfFunctions, PDWORD);
-	pdwOrdinals = MAKE_PTR(pvBase, pImgDirExport->AddressOfNameOrdinals, PWORD);
-	for (i = 0; i < pImgDirExport->NumberOfNames; i++)
-	{
-		if (!strcmp(MAKE_PTR(pvBase, pdwNames[i], PCHAR), Name))
-		{
-			return MAKE_PTR(pvBase, pdwProcedures[pdwOrdinals[i]], PVOID);
-		}
-	}
-	return NULL;
-}
+	DPRINT("ffgame: %s: Delivering apc \n", __FUNCTION__);
 
-PVOID GetProcAddressInModule(PWCHAR ModuleName, PCHAR FunctionName)
-{
-	NTSTATUS Status;
-	PROCESS_BASIC_INFORMATION Info;
-	PVOID pModuleBase = NULL;
-	PVOID pProcAddress = NULL;
-	ULONG Length;
+	if (PsIsThreadTerminating(PsGetCurrentThread()))
+		*NormalRoutine = NULL;
 
-	Status = ZwQueryInformationProcess(ZwCurrentProcess(), ProcessBasicInformation, &Info, sizeof(Info), &Length);
-	if (NT_SUCCESS(Status))
-	{
-		UNICODE_STRING uStr;
-		PPEB Peb = Info.PebBaseAddress;
+	if (PsGetCurrentProcessWow64Process() != NULL)
+		PsWrapApcWow64Thread(NormalContext, (PVOID*)NormalRoutine);
 
-		RtlInitUnicodeString(&uStr, ModuleName);
-
-		LIST_ENTRY* head = &Peb->LoaderData->InLoadOrderModuleList;
-		for (LIST_ENTRY* entry = head->Flink; entry != head; entry = entry->Flink)
-		{
-			LDR_DATA_TABLE_ENTRY* ldr_entry = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-
-			DPRINT("ffgame: %s: checking module %ls=%ls\n", __FUNCTION__, ldr_entry->BaseDllName.Buffer, uStr.Buffer);
-
-			if (RtlEqualUnicodeString(&ldr_entry->BaseDllName, &uStr, TRUE))
-			{
-				pModuleBase = ldr_entry->DllBase;
-
-				break;
-			}
-		}
-	}
-	if (pModuleBase)
-	{
-		pProcAddress = GetProcedureAddressByHash(pModuleBase, FunctionName);
-	}
-	else
-	{
-		DPRINT("ffgame: %s: pModuleBase\n", __FUNCTION__);
-	}
-	return pProcAddress;
-}
-
-VOID APCKernelRoutine(PKAPC pkaApc, PKNORMAL_ROUTINE* u1, PVOID* u2, PVOID* ppvMemory, PVOID* u3)
-{
-	DPRINT("ffgame: %s: apc delivered\n", __FUNCTION__);
 	ExFreePool(pkaApc);
 }
 
 
-NTSTATUS DllInject(HANDLE hProcessID, PWCHAR dllPath, PEPROCESS pepProcess, PKTHREAD pktThread)
+NTSTATUS FFDllInject(HANDLE hProcessID, PWCHAR dllPath, PKTHREAD pktThread)
 {
 	NTSTATUS Status = STATUS_NO_MEMORY;
+	PEPROCESS pProcess;
 	HANDLE hProcess;
 	CLIENT_ID cidProcess;
 	OBJECT_ATTRIBUTES attr = { sizeof(OBJECT_ATTRIBUTES), 0, NULL, OBJ_CASE_INSENSITIVE };
 	PVOID pvMemory = 0;
-	DWORD dwSize = 0x1000;
+	DWORD dwSize = 0x200;
 
 	cidProcess.UniqueProcess = hProcessID;
 	cidProcess.UniqueThread = 0;
 
-	if (PsIsProtectedProcess(pepProcess))
+	Status = PsLookupProcessByProcessId(hProcessID, &pProcess);
+	if (NT_ERROR(Status))
+	{
+		DPRINT("ffgame: %s: PsLookupProcessByProcessId failed\n", __FUNCTION__);
+		goto exit;
+	}
+
+	if (PsIsProtectedProcess(pProcess))
 	{
 		DPRINT("ffgame: %s: process is protected\n", __FUNCTION__);
 	}
@@ -256,27 +422,48 @@ NTSTATUS DllInject(HANDLE hProcessID, PWCHAR dllPath, PEPROCESS pepProcess, PKTH
 	}
 
 	PKAPC pkaApc;
-	PVOID FunctionAddress;
+	PVOID pNtdll;
+	PVOID pLdrDll;
 
 	try 
 	{
+		PEPROCESS CurrentProcess = PsGetCurrentProcess();
 		KAPC_STATE kasState;
-		KeStackAttachProcess((PKPROCESS)pepProcess, &kasState);
-		FunctionAddress = GetProcAddressInModule(L"kernel32.dll", "LoadLibraryA");
-		if (!FunctionAddress)
-			DPRINT("ffgame: %s: GetProcAddress failed\n", __FUNCTION__);
+		UNICODE_STRING uDllPath;
+		UNICODE_STRING uNtDll;
 
-		wcscpy((PWCHAR)pvMemory, dllPath);
+		KeStackAttachProcess((PKPROCESS)pProcess, &kasState);
+		
+		RtlInitUnicodeString(&uDllPath, dllPath);
+		RtlInitUnicodeString(&uNtDll, L"ntdll.dll");
+
+		pNtdll = FFGetUserModule(pProcess, "ntdll.dll", TRUE);
+		if (!pNtdll)
+		{
+			DPRINT("ffgame: %s: pNtdll not found\n", __FUNCTION__);
+			Status = STATUS_NOT_FOUND;
+		}
+
+		pLdrDll = FFGetModuleFunction(pNtdll, "LdrLoadDll", pProcess, NULL);
+		if (!pLdrDll)
+		{
+			DPRINT("ffgame: %s: pLdrDll not found\n", __FUNCTION__);
+			Status = STATUS_NOT_FOUND;
+		}
+		
+		
+		if (NT_SUCCESS(Status))
+		{
+			pkaApc = (PKAPC)ExAllocatePool(NonPagedPool, sizeof(KAPC));
+			if (pkaApc)
+			{
+				KeInitializeApc(pkaApc, pktThread, 0, (PKKERNEL_ROUTINE)FFAPCKernelRoutine, 0, (PKNORMAL_ROUTINE)(ULONG_PTR)pInject, UserMode, pvMemory);
+				KeInsertQueueApc(pkaApc, 0, 0, IO_NO_INCREMENT);
+				Status = STATUS_SUCCESS;
+			}
+		}
 
 		KeUnstackDetachProcess(&kasState);
-
-		pkaApc = (PKAPC)ExAllocatePool(NonPagedPool, sizeof(KAPC));
-		if (pkaApc)
-		{
-			KeInitializeApc(pkaApc, pktThread, 0, (PKKERNEL_ROUTINE)APCKernelRoutine, 0, (PKNORMAL_ROUTINE)FunctionAddress, UserMode, pvMemory);
-			KeInsertQueueApc(pkaApc, 0, 0, IO_NO_INCREMENT);
-			Status = STATUS_SUCCESS;
-		}
 	}
 	except(EXCEPTION_EXECUTE_HANDLER) 
 	{
@@ -284,57 +471,49 @@ NTSTATUS DllInject(HANDLE hProcessID, PWCHAR dllPath, PEPROCESS pepProcess, PKTH
 	}
 
 exit:
+	if (hProcess)
+		ZwClose(hProcess);
+
 	return Status;
 }
 
-typedef struct _WI_INJECT
+NTSTATUS FFGameCpyMem(IN PCOPY_MEMORY pCopy)
 {
-	PWCHAR pDllPath;
-	PKTHREAD pktThread;
-	PEPROCESS pepProcess;
-	HANDLE hProcessID;
-	KEVENT keEvent;
-	WORK_QUEUE_ITEM qiItem;
-} WI_INJECT, *PWI_INJECT;
+	DPRINT("ffgame: %s: pid=%d, targetPtr=0x%08x -> localPtr=0x%X\n", __FUNCTION__, pCopy->TargetProcessId, pCopy->LocalPtr, pCopy->TargetPtr);
 
-VOID InjectorWorkItem(PVOID pvContext)
-{
-	PWI_INJECT pwInject = (PWI_INJECT)pvContext;
+	NTSTATUS Status = STATUS_SUCCESS;
+	PEPROCESS pProcess = NULL, pSourceProc = NULL, pTargetProc = NULL;
+	PVOID pSource = NULL, pTarget = NULL;
 
-	NTSTATUS Status = DllInject(pwInject->hProcessID, pwInject->pDllPath, pwInject->pepProcess, pwInject->pktThread);
+	Status = PsLookupProcessByProcessId((HANDLE)pCopy->TargetProcessId, &pProcess);
+
 	if (NT_SUCCESS(Status))
 	{
-		DPRINT("ffgame: %s: sucessfully injected dll", __FUNCTION__);
+		SIZE_T bytes = 0;
+		if (pCopy->Write != FALSE)
+		{
+			pSourceProc = PsGetCurrentProcess();
+			pTargetProc = pProcess;
+			pSource = (PVOID)pCopy->LocalPtr;
+			pTarget = (PVOID)pCopy->TargetPtr;
+		}
+		else
+		{
+			pSourceProc = pProcess;
+			pTargetProc = PsGetCurrentProcess();
+			pSource = (PVOID)pCopy->TargetPtr;
+			pTarget = (PVOID)pCopy->LocalPtr;
+		}
+
+		Status = MmCopyVirtualMemory(pSourceProc, pSource, pTargetProc, pTarget, pCopy->PtrSize, KernelMode, &bytes);
 	}
 	else
-	{
-		DPRINT("ffgame: %s: failed to inject dll status=0x%x", __FUNCTION__, Status);
-	}
-	KeSetEvent(&((PWI_INJECT)pvContext)->keEvent, (KPRIORITY)0, FALSE);
-}
+		DPRINT("ffgame: %s: PsLookupProcessByProcessId failed with status 0x%X\n", __FUNCTION__, Status);
 
-VOID APCInjectRoutine(PKAPC pkaApc, PKNORMAL_ROUTINE* pNormalRoutine, PVOID* pNormalContext, PVOID* u3, PVOID* u4)
-{
-	ExFreePool(pkaApc);
-	
-	PINJECT_DLL pInject = (PINJECT_DLL)pNormalContext;
+	if (pProcess)
+		ObDereferenceObject(pProcess);
 
-	WI_INJECT wiiItem;
-
-	wiiItem.pktThread = KeGetCurrentThread();
-	wiiItem.pepProcess = IoGetCurrentProcess();
-	wiiItem.hProcessID = PsGetCurrentProcessId();
-	wiiItem.pDllPath = pInject->FullDllPath;
-
-	KeInitializeEvent(&wiiItem.keEvent, NotificationEvent, FALSE);
-
-	ExInitializeWorkItem(&wiiItem.qiItem, InjectorWorkItem, &wiiItem);
-	ExQueueWorkItem(&wiiItem.qiItem, DelayedWorkQueue);
-
-	//was KernelMode not work do UserMode and work
-	KeWaitForSingleObject(&wiiItem.keEvent, Executive, UserMode, TRUE, 0);
-
-	return;
+	return Status;
 }
 
 NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
@@ -343,48 +522,28 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 
 	NTSTATUS Status;
 	HANDLE ProcessId = FFLookupProcessId(pInject->ProcessName);
-
-	if (ProcessId)
-	{
-		PETHREAD pThread;
-		Status = FFLookupProcessThread(ProcessId, &pThread);
-		if (NT_SUCCESS(Status))
-		{
-			DPRINT("ffgame: %s: allocating apc\n", __FUNCTION__);
-			PKAPC pkaApc = (PKAPC)ExAllocatePool(NonPagedPool, sizeof(KAPC));
-			if (pkaApc)
-			{
-				DPRINT("ffgame: %s: initializing apc", __FUNCTION__);
-				Status = KeInitializeApc(pkaApc, (PKTHREAD)pThread, 0, APCInjectRoutine, 0, 0, KernelMode, pInject);
-				if (NT_SUCCESS(Status))
-				{
-					DPRINT("ffgame: %s: queueing apc", __FUNCTION__);
-					Status = KeInsertQueueApc(pkaApc, 0, 0, IO_NO_INCREMENT);
-					if (!NT_SUCCESS(Status))
-					{
-						DPRINT("ffgame: %s: KeInsertQueueApc failed\n", __FUNCTION__);
-					}
-				}
-				else
-				{
-					DPRINT("ffgame: %s: KeInitializeApc failed\n", __FUNCTION__);
-				}
-			}
-			else
-			{
-				DPRINT("ffgame: %s: ExAllocatePool failed\n", __FUNCTION__);
-				Status = STATUS_FWP_NULL_POINTER;
-			}
-			ObDereferenceObject(pThread);
-		}
-		else
-		{
-			DPRINT("ffgame: %s: FFLookupProcessThread failed\n", __FUNCTION__);
-		}
-	}
-	else
+	if (!ProcessId)
 	{
 		DPRINT("ffgame: %s: FFLookupProcessId failed\n", __FUNCTION__);
+		Status = STATUS_NOT_FOUND;
+		goto exit;
 	}
+
+	PETHREAD pThread;
+	Status = FFLookupProcessThread(ProcessId, &pThread);
+	if (NT_ERROR(Status))
+	{
+		DPRINT("ffgame: %s: FFLookupProcessThread failed\n", __FUNCTION__);
+		goto exit;
+	}
+	
+	Status = FFDllInject(ProcessId, pInject->FullDllPath, pThread);
+	if (NT_ERROR(Status))
+	{
+		DPRINT("ffgame: %s: FFDllInject failed\n", __FUNCTION__);
+		goto exit;
+	}
+	
+exit:
 	return Status;
 }
