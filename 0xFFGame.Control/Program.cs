@@ -30,9 +30,9 @@ namespace _0xFFGame.Control
         {
             using (var ffgame = new FFGameDriver(Path.GetFullPath("0xFFGame.Drived.sys")))
             {
-                var processName = Marshal.StringToHGlobalUni("notepad.exe");
+                var processId = (uint)Process.GetProcesses().First(p => p.ProcessName == "notepad").Id;
                 var dllPath = Marshal.StringToHGlobalUni(Path.GetFullPath("0xFFGame.Host.dll"));
-                ffgame.InjectDll(new InjectDll(processName, dllPath));
+                ffgame.InjectDll(new InjectDll(processId, dllPath));
             }
         }
     }

@@ -191,7 +191,7 @@
   <ItemGroup>
     <ClInclude Include="FFGameDef.h" />
     <ClInclude Include="FFGameFunc.h" />
-    <ClInclude Include="FFStruct.h" />
+    <ClInclude Include="FFGameStruct.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FFGameDriver.c" />

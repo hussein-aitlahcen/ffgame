@@ -48,14 +48,12 @@ namespace _0xFFGame.Control
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
     public struct InjectDll
     {
-        public readonly ulong ProcessName;
+        public readonly uint ProcessId;
         public readonly ulong FullDllPath;
-        public InjectDll(IntPtr pName, IntPtr dllPath)
+        public InjectDll(uint pId, IntPtr dllPath)
         {
-            ProcessName = (ulong)pName; //pName;
-            FullDllPath = (ulong)dllPath; //dllPath;
-            //ProcessName = pName;
-            //FullDllPath = dllPath;
+            ProcessId = pId;
+            FullDllPath = (ulong) dllPath;
         }
     }
 

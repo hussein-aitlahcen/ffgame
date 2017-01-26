@@ -2,6 +2,7 @@
 
 #include <ntifs.h>
 #include <ntstrsafe.h>
+#include <ntimage.h>
 
 NTKERNELAPI
 NTSTATUS
@@ -63,20 +64,3 @@ PsGetCurrentProcessWow64Process();
 
 #define IOCTL_FFGAME_COPY_MEMORY  (ULONG)CTL_CODE(FILE_DEVICE_FFGAME, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 #define IOCTL_FFGAME_INJECT_DLL (ULONG)CTL_CODE(FILE_DEVICE_FFGAME, 0x802, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
-
-#pragma pack(push, 1)
-typedef struct _copy_memory_t
-{
-	ULONGLONG LocalPtr;
-	ULONGLONG TargetPtr;
-	ULONGLONG PtrSize;
-	ULONG     TargetProcessId;
-	BOOLEAN   Write;
-} COPY_MEMORY, *PCOPY_MEMORY;
-
-typedef struct _inject_dll_t
-{
-	PWCHAR ProcessName;
-	PWCHAR FullDllPath;
-} INJECT_DLL, *PINJECT_DLL;
-#pragma pack(pop)
