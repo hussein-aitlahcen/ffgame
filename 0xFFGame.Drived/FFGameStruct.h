@@ -7,7 +7,7 @@ typedef struct _copy_memory_t
 {
 	PVOID LocalPtr;
 	PVOID TargetPtr;
-	PVOID PtrSize;
+	SIZE_T PtrSize;
 	HANDLE TargetProcess;
 	BOOLEAN   Write;
 } COPY_MEMORY, *PCOPY_MEMORY;

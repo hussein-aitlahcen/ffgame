@@ -11,7 +11,7 @@ NTSTATUS FFGameCpyMem(IN PCOPY_MEMORY pCopy)
 	Status = PsLookupProcessByProcessId(pCopy->TargetProcess, &pProcess);
 	if (NT_ERROR(Status))
 	{
-		DPRINT("ffgame: %s: could not found target process\n", __FUNCTION__);
+		DPRINT("ffgame: %s: could not find target process\n", __FUNCTION__);
 		goto exit;
 	}
 
@@ -50,12 +50,9 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 	Status = PsLookupProcessByProcessId(pInject->TargetProcess, &pProcess);
 	if (NT_ERROR(Status))
 	{
-		DPRINT("ffgame: %s: could not found target process\n", __FUNCTION__);
+		DPRINT("ffgame: %s: could not find target process\n", __FUNCTION__);
 		goto exit;
 	}
-
-
-
 		
 exit:
 	if (pProcess)
