@@ -57,7 +57,7 @@ NTSTATUS FFFindModuleBase(IN HANDLE hTargetProcess, IN PUNICODE_STRING pModuleNa
 		if (RtlEqualUnicodeString(pModuleName, &pEntryLdr->BaseDllName, TRUE))
 		{
 			*pModuleBase = pEntryLdr->DllBase;
-			DPRINT("ffgame %s: module base address 0x%x\n", __FUNCTION__, *pModuleBase);
+			DPRINT("ffgame: %s: found %ls, base address 0x%x\n", __FUNCTION__, pModuleName->Buffer, *pModuleBase);
 		}
 		pEntryCurrent = pEntryCurrent->Flink;
 	} while (!(*pModuleBase) && pEntryCurrent != pEntryEnd);

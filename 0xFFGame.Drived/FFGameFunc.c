@@ -6,9 +6,9 @@ NTSTATUS FFCopyMemory(IN PCOPY_MEMORY pCopy)
 	PEPROCESS pProcess = NULL, pSourceProc = NULL, pTargetProc = NULL;
 	PVOID pSource = NULL, pTarget = NULL;
 
-	DPRINT("ffgame: %s: pid=%d, targetPtr=0x%08x -> localPtr=0x%X\n", __FUNCTION__, pCopy->pTargetProcess, pCopy->pLocalAddress, pCopy->pTargetAddress);
+	DPRINT("ffgame: %s: pid=%d, targetPtr=0x%08x -> localPtr=0x%X\n", __FUNCTION__, pCopy->hTargetProcess, pCopy->pLocalAddress, pCopy->pTargetAddress);
 
-	Status = PsLookupProcessByProcessId(pCopy->pTargetProcess, &pProcess);
+	Status = PsLookupProcessByProcessId(pCopy->hTargetProcess, &pProcess);
 	if (NT_ERROR(Status))
 	{
 		DPRINT("ffgame: %s: could not find target process\n", __FUNCTION__);
@@ -42,12 +42,12 @@ cleanup:
 
 NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 {
-	DPRINT("ffgame: %s: injecting %ls into processId %d\n", __FUNCTION__, pInject->pFullDllPath, pInject->pTargetProcess);
+	DPRINT("ffgame: %s: injecting %ls into processId %d\n", __FUNCTION__, pInject->pFullDllPath, pInject->hTargetProcess);
 
 	PVOID pModuleBase = NULL;
 	UNICODE_STRING uModuleName = RTL_CONSTANT_STRING(L"ntdll.dll");
 
-	NTSTATUS Status = FFFindModuleBase(pInject->pTargetProcess, &uModuleName, &pModuleBase);
+	NTSTATUS Status = FFFindModuleBase(pInject->hTargetProcess, &uModuleName, &pModuleBase);
 
 	return Status;
 }
