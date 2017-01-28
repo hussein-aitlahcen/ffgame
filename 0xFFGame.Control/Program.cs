@@ -28,9 +28,10 @@ namespace _0xFFGame.Control
 
         static void Main(string[] args)
         {
+            Process.Start("dsefix.exe");
             using (var ffgame = new FFGameDriver(Path.GetFullPath("0xFFGame.Drived.sys")))
             {
-                var processId = (uint)Process.GetProcesses().First(p => p.ProcessName == "notepad").Id;
+                var processId = (uint)Process.GetProcesses().First(p => p.ProcessName == "RustClient").Id;
                 var dllPath = Marshal.StringToHGlobalUni(Path.GetFullPath("0xFFGame.Host.dll"));
                 ffgame.InjectDll(new InjectDll(processId, dllPath));
             }

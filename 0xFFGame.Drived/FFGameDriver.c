@@ -86,7 +86,7 @@ NTSTATUS FFGameDispatcher(IN PDEVICE_OBJECT pDeviceObject, IN PIRP pIrp)
 			switch (IoControlCode)
 			{
 				case IOCTL_FFGAME_COPY_MEMORY:
-					ENSURE_INPUT(PCOPY_MEMORY, FFGameCpyMem, pIrp, InputBufferLength, pIoBuffer);
+					ENSURE_INPUT(PCOPY_MEMORY, FFCopyMemory, pIrp, InputBufferLength, pIoBuffer);
 					break;
 
 				case IOCTL_FFGAME_INJECT_DLL:

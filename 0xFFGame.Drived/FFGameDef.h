@@ -7,6 +7,7 @@
 #include <ntstrsafe.h>
 #include <ntimage.h>
 #include <wdm.h>
+#include <windef.h>
 
 NTKERNELAPI
 NTSTATUS
@@ -114,13 +115,23 @@ typedef struct _LDR_DATA_TABLE_ENTRY {
 	PVOID EntryPoint;
 	PVOID SizeOfImage;
 	UNICODE_STRING FullDllName;
-	BYTE Reserved4[8];
-	PVOID Reserved5[3];
-	union {
-		ULONG CheckSum;
-		PVOID Reserved6;
+	UNICODE_STRING BaseDllName;
+	ULONG Flags;
+	USHORT LoadCount;
+	USHORT TlsIndex;
+	union
+	{
+		LIST_ENTRY HashLinks;
+		PVOID SectionPointer;
 	};
-	ULONG TimeDateStamp;
+	ULONG CheckSum;
+	union
+	{
+		ULONG TimeDateStamp;
+		PVOID LoadedImports;
+	};
+	PVOID EntryPointActivationContext;
+	PVOID PatchInformation;
 } LDR_DATA_TABLE_ENTRY, *PLDR_DATA_TABLE_ENTRY;
 
 typedef struct _PEB {

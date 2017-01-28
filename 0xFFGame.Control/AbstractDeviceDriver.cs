@@ -125,9 +125,7 @@ namespace _0xFFGame.Control
         private void OpenDevice()
         {
             LoadDeviceDriver();
-            m_fileHandle = CreateFile("\\\\.\\" + DriverName, 
-                FileAccess.ReadWrite, FileShare.ReadWrite, 
-                IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
+            m_fileHandle = CreateFile("\\\\.\\" + DriverName, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
             if (m_fileHandle == INVALID_HANDLE_VALUE)
                 Marshal.ThrowExceptionForHR(HRESULT_FROM_WIN32(Marshal.GetLastWin32Error()));
         }

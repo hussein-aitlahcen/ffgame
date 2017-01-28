@@ -1,6 +1,6 @@
 #include "FFGameFunc.h"
 
-NTSTATUS FFGameCpyMem(IN PCOPY_MEMORY pCopy)
+NTSTATUS FFCopyMemory(IN PCOPY_MEMORY pCopy)
 {
 	NTSTATUS Status = STATUS_SUCCESS;
 	PEPROCESS pProcess = NULL, pSourceProc = NULL, pTargetProc = NULL;
@@ -42,54 +42,12 @@ cleanup:
 
 NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 {
-	NTSTATUS Status = STATUS_SUCCESS;
-	PEPROCESS pProcess = NULL;
-	HANDLE hProcess = NULL;
-	PLIST_ENTRY pHeadEntry = NULL;
-	PLIST_ENTRY pCurrentEntry = NULL;
-	PLDR_DATA_TABLE_ENTRY pLdrEntry = NULL;
-	ULONG InfoLength = 0;
-	PROCESS_BASIC_INFORMATION BasicInfo;
-
-	PAGED_CODE();
-
 	DPRINT("ffgame: %s: injecting %ls into processId %d\n", __FUNCTION__, pInject->pFullDllPath, pInject->pTargetProcess);
 
-	Status = PsLookupProcessByProcessId(pInject->pTargetProcess, &pProcess);
-	if (NT_ERROR(Status))
-	{
-		DPRINT("ffgame: %s: PsLookupProcessByProcessId failed\n", __FUNCTION__);
-		goto cleanup;
-	}
-	
-	Status = ObOpenObjectByPointer(pProcess, OBJ_KERNEL_HANDLE, NULL, 0, NULL, KernelMode, &hProcess);
-	if (NT_ERROR(Status))
-	{
-		DPRINT("ffgame: %s: ObOpenObjectByPointer failed\n", __FUNCTION__);
-		goto cleanup;
-	}
-	
-	Status = ZwQueryInformationProcess(hProcess, ProcessBasicInformation, &BasicInfo, sizeof(PROCESS_BASIC_INFORMATION), &InfoLength);
-	if (NT_ERROR(Status) || InfoLength != sizeof(PROCESS_BASIC_INFORMATION))
-	{
-		DPRINT("ffgame: %s: ZwQueryInformationProcess failed\n", __FUNCTION__);
-		goto cleanup;
-	}
+	PVOID pModuleBase = NULL;
+	UNICODE_STRING uModuleName = RTL_CONSTANT_STRING(L"ntdll.dll");
 
-	pHeadEntry = &BasicInfo.PebBaseAddress->Ldr->InMemoryOrderModuleList;
-	pCurrentEntry = pHeadEntry->Flink;
-	while (pCurrentEntry != pHeadEntry) 
-	{
-		pLdrEntry = CONTAINING_RECORD(pCurrentEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-		DPRINT("ffgame: %s: found module %ls\n", __FUNCTION__, pLdrEntry->FullDllName.Buffer);
-	}
-
-cleanup:
-	if(pProcess)
-		ObDereferenceObject(pProcess);
-
-	if (hProcess)
-		ZwClose(hProcess);
+	NTSTATUS Status = FFFindModuleBase(pInject->pTargetProcess, &uModuleName, &pModuleBase);
 
 	return Status;
 }

@@ -28,12 +28,18 @@
     <ClInclude Include="FFGameStruct.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FFGameNative.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="FFGameDriver.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="FFGameFunc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FFGameDriver.c">
+    <ClCompile Include="FFGameNative.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

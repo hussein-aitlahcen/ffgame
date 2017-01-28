@@ -42,7 +42,7 @@
     <Configuration>Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>
     <RootNamespace>_0xFFGame_Drived</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -191,11 +191,13 @@
   <ItemGroup>
     <ClInclude Include="FFGameDef.h" />
     <ClInclude Include="FFGameFunc.h" />
+    <ClInclude Include="FFGameNative.h" />
     <ClInclude Include="FFGameStruct.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FFGameDriver.c" />
     <ClCompile Include="FFGameFunc.c" />
+    <ClCompile Include="FFGameNative.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
