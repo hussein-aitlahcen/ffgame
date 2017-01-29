@@ -161,13 +161,18 @@
     <ClCompile>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <Optimization>Full</Optimization>
+      <Optimization>MinSpace</Optimization>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <AssemblerOutput>All</AssemblerOutput>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <AssemblerOutput>All</AssemblerOutput>
+      <StructMemberAlignment>Default</StructMemberAlignment>
+      <Optimization>MinSpace</Optimization>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">

@@ -15,6 +15,6 @@ typedef struct _copy_memory_t
 typedef struct _inject_dll_t
 {
 	HANDLE hTargetProcess;
-	PWCHAR pFullDllPath;
+	WCHAR pFullDllPath[512];
 } INJECT_DLL, *PINJECT_DLL;
 #pragma pack(pop)
