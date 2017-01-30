@@ -178,6 +178,12 @@ VOID KernelApcPrepareCallback(
 	ExFreePool(pKApc);
 }
 
+VOID NTAPI UserApcInject(IN PVOID pContext, IN PVOID pSystemArgument1, IN PVOID pSystemArgument2)
+{
+	PINJECT_BUFFER pBuffer = (PINJECT_BUFFER)pContext;
+	((NtLdrLoadDll)pBuffer->pLdrLoadDll)(pBuffer->pPathToFile, pBuffer->pFlags, pBuffer->pModuleFileName, pBuffer->pModuleHandle);
+}
+
 VOID KernelApcInjectCallback(
 	IN PKAPC pKApc,
 	IN PKNORMAL_ROUTINE* ppNormalRoutine,
@@ -189,6 +195,11 @@ VOID KernelApcInjectCallback(
 	UNREFERENCED_PARAMETER(ppNormalContext);
 	UNREFERENCED_PARAMETER(ppSystemArgument1);
 	UNREFERENCED_PARAMETER(ppSystemArgument2);
+
+	if (PsIsThreadTerminating(PsGetCurrentThread()))
+	{
+		*ppNormalRoutine = NULL;
+	}
 
 	DPRINT("ffgame: %s: apc inject routine=0x%X\n", __FUNCTION__, *ppNormalRoutine);
 
@@ -252,9 +263,9 @@ NTSTATUS FFQueueUserApc(
 	}
 }
 
-NTSTATUS FFAllocate(OUT PVOID *pBaseAddress, OUT PSIZE_T Size)
+NTSTATUS FFAllocate(IN HANDLE hProcess, OUT PVOID *pBaseAddress, OUT PSIZE_T Size)
 {
-	return ZwAllocateVirtualMemory(ZwCurrentProcess(), pBaseAddress, 0, Size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	return ZwAllocateVirtualMemory(hProcess, pBaseAddress, 0, Size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 }
 
 NTSTATUS FFApcInject(IN HANDLE hProcess, IN PVOID pUserFunction, IN PVOID pUserArgument)
@@ -265,8 +276,6 @@ NTSTATUS FFApcInject(IN HANDLE hProcess, IN PVOID pUserFunction, IN PVOID pUserA
 	{
 		.QuadPart = -100 * 10000
 	};
-
-	DPRINT("ffgame: current process id %d\n", PsGetCurrentProcessId());
 
 	DPRINT("ffgame: %s: FFLookupProcessThread\n", __FUNCTION__);
 	Status = FFLookupProcessThread(hProcess, &pThread);

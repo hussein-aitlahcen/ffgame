@@ -52,7 +52,7 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 	UNICODE_STRING uInjectDllPath;
 	KAPC_STATE KApcState;
 	BOOL Attached = FALSE;
-	PLDR_LOAD_DLL_T pLdrLoadDllStruct = NULL;
+	PINJECT_BUFFER pInjectBuffer = NULL;
 	SIZE_T AllocateSize = PAGE_SIZE;
 
 	RtlInitUnicodeString(&uInjectDllPath, pInject->pFullDllPath);
@@ -89,25 +89,48 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 
 	try
 	{
-		Status = FFAllocate(&pLdrLoadDllStruct, &AllocateSize);
+		Status = FFAllocate(ZwCurrentProcess(), &pInjectBuffer, &AllocateSize);
 		if (NT_ERROR(Status))
 		{
 			DPRINT("ffgame: %s: FFAllocate failed 0x%X\n", __FUNCTION__, Status);
 			goto cleanup;
 		}
 
-		pLdrLoadDllStruct->Flags = NULL;
-		pLdrLoadDllStruct->PathToFile = NULL;
-		pLdrLoadDllStruct->pModuleHandle = &pLdrLoadDllStruct->ModuleHandle;
-		pLdrLoadDllStruct->pModuleFileName = &pLdrLoadDllStruct->ModuleFileName;
+		pInjectBuffer->pLdrLoadDll = pLdrLoadDll;
+		pInjectBuffer->pFlags = NULL;
+		pInjectBuffer->pPathToFile = NULL;
+		pInjectBuffer->pModuleHandle = &pInjectBuffer->ModuleHandle;
+		pInjectBuffer->pModuleFileName = &pInjectBuffer->ModuleFileName;
 	
-		pLdrLoadDllStruct->ModuleFileName.Buffer = (PWCHAR)&pLdrLoadDllStruct->FullDllPath;
-		pLdrLoadDllStruct->ModuleFileName.MaximumLength = uInjectDllPath.MaximumLength;
-		pLdrLoadDllStruct->ModuleFileName.Length = uInjectDllPath.Length;
+		pInjectBuffer->ModuleFileName.Buffer = (PWCHAR)&pInjectBuffer->FullDllPath;
+		pInjectBuffer->ModuleFileName.MaximumLength = uInjectDllPath.MaximumLength;
+		pInjectBuffer->ModuleFileName.Length = uInjectDllPath.Length;
 
-		memcpy((PVOID)pLdrLoadDllStruct->FullDllPath, (PVOID)uInjectDllPath.Buffer, uInjectDllPath.Length);
+		memcpy((PVOID)pInjectBuffer->FullDllPath, (PVOID)uInjectDllPath.Buffer, uInjectDllPath.Length);
 
-		FFApcInject(pInject->hTargetProcess, (PVOID)pLdrLoadDll, (PVOID)pLdrLoadDllStruct);
+		// UserApcInject
+		//00000	4c 8b 49 20	 mov	 r9, QWORD PTR[rcx + 32]
+		//00004	48 8b c1	 mov	 rax, rcx
+		//00007	4c 8b 41 18	 mov	 r8, QWORD PTR[rcx + 24]
+		//0000b	48 8b 51 10	 mov	 rdx, QWORD PTR[rcx + 16]
+		//0000f	48 8b 49 08	 mov	 rcx, QWORD PTR[rcx + 8]
+		//00013	48 ff 20	 rex_jmp QWORD PTR[rax]
+		UCHAR ApcCode[] =
+		{			
+			0x4C, 0x8B, 0x49, 0x20,
+			0x48, 0x8B, 0xC1,
+			0x4C, 0x8B, 0x41, 0x18,
+			0x48, 0x8B, 0x51, 0x10,
+			0x48, 0x8B, 0x49, 0x08,
+			0x48, 0xFF, 0x20
+		};
+
+		PVOID ApcCodeAddress = (PVOID)((ULONGLONG)pInjectBuffer + sizeof(INJECT_BUFFER));
+		memcpy(ApcCodeAddress, &ApcCode, sizeof(ApcCode));
+
+		DPRINT("ffgame: %s: apc param addres=0x%X\n", __FUNCTION__, pInjectBuffer);
+		DPRINT("ffgame: %s: apc code addres=0x%X\n", __FUNCTION__, ApcCodeAddress);
+		FFApcInject(pInject->hTargetProcess, ApcCodeAddress, (PVOID)(ULONGLONG)pInjectBuffer);
 	}
 	except(EXCEPTION_EXECUTE_HANDLER)
 	{

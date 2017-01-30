@@ -310,7 +310,7 @@ typedef VOID(NTAPI* PKKERNEL_ROUTINE)
 	IN PVOID *ppNormalContext,
 	IN PVOID *ppSystemArgument1,
 	IN PVOID *ppSystemArgument2
-	);
+);
 
 typedef VOID(NTAPI *PKRUNDOWN_ROUTINE)(PRKAPC Apc);
 

@@ -4,17 +4,18 @@
 
 #define CALL_COMPLETE   0xCF3F1F7F
 
-typedef struct _ldr_load_dll_t
+typedef struct _inject_buffer_t
 {
-	PWCHAR PathToFile;
-	PULONG Flags;
+	PLDR_LOADDLL pLdrLoadDll;
+	PWCHAR pPathToFile;
+	PULONG pFlags;
 	PUNICODE_STRING pModuleFileName;
 	PHANDLE pModuleHandle;
 
 	UNICODE_STRING ModuleFileName;
 	WCHAR FullDllPath[512];
 	HANDLE ModuleHandle;
-} LDR_LOAD_DLL_T, *PLDR_LOAD_DLL_T;
+} INJECT_BUFFER, *PINJECT_BUFFER;
 
 VOID KernelApcInjectCallback(
 	IN PKAPC pKApc,
@@ -24,7 +25,7 @@ VOID KernelApcInjectCallback(
 	IN PVOID* ppSystemArgument2
 );
 
-VOID NTAPI UserApcInject(
+VOID UserApcInject(
 	IN PVOID pNormalContext, 
 	IN PVOID pSystemArgument1, 
 	IN PVOID pSystemArgument2
@@ -54,7 +55,7 @@ PVOID FFFindModuleExport(
 	IN PCCHAR pOrdinalName
 );
 
-NTSTATUS FFAllocate(OUT PVOID *pBaseAddress, OUT PSIZE_T );
+NTSTATUS FFAllocate(IN HANDLE pProcess, OUT PVOID *pBaseAddress, OUT PSIZE_T );
 
 NTSTATUS FFFindModuleBase(
 	IN PEPROCESS pProcess,
