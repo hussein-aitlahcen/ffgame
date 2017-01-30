@@ -4,6 +4,7 @@
 
 #define CALL_COMPLETE   0xCF3F1F7F
 
+#pragma pack(push, 1)
 typedef struct _inject_buffer_t
 {
 	PLDR_LOADDLL pLdrLoadDll;
@@ -15,7 +16,9 @@ typedef struct _inject_buffer_t
 	UNICODE_STRING ModuleFileName;
 	WCHAR FullDllPath[512];
 	HANDLE ModuleHandle;
+	BOOLEAN Complete;
 } INJECT_BUFFER, *PINJECT_BUFFER;
+#pragma pack(pop)
 
 VOID KernelApcInjectCallback(
 	IN PKAPC pKApc,

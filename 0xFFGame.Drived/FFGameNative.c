@@ -7,6 +7,7 @@ PVOID FFFindModuleExport(IN PVOID pBase, IN PCCHAR pOrdinalName)
 	PIMAGE_EXPORT_DIRECTORY pExport = NULL;
 	ULONG expSize = 0;
 	ULONG_PTR pAddress = 0;
+	ULONG VirtualAddress = 0;
 
 	ASSERT(pBase != NULL);
 	if (pBase == NULL)
@@ -22,19 +23,25 @@ PVOID FFFindModuleExport(IN PVOID pBase, IN PCCHAR pOrdinalName)
 
 	pExport = (PIMAGE_EXPORT_DIRECTORY)(pNtHdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress + (ULONG_PTR)pBase);
 	expSize = pNtHdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+	VirtualAddress = pNtHdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
 
 	PUSHORT pAddressOfOrds = (PUSHORT)(pExport->AddressOfNameOrdinals + (ULONG_PTR)pBase);
 	PULONG  pAddressOfNames = (PULONG)(pExport->AddressOfNames + (ULONG_PTR)pBase);
 	PULONG  pAddressOfFuncs = (PULONG)(pExport->AddressOfFunctions + (ULONG_PTR)pBase);
 
-	for (ULONG i = 0; i < pExport->NumberOfFunctions; ++i)
+	for (ULONG i = 0; i < pExport->NumberOfFunctions; i++)
 	{
-		PCHAR  pName = (PCHAR)(pAddressOfNames[i] + (ULONG_PTR)pBase);
-		if (strcmp(pName, pOrdinalName) == 0)
+		ULONG Ordinal = pAddressOfOrds[i];
+		PCHAR pName = (PCHAR)(pAddressOfNames[i] + (ULONG_PTR)pBase);
+
+		if (pAddressOfFuncs[Ordinal] < VirtualAddress || pAddressOfFuncs[Ordinal] >= VirtualAddress + expSize)
 		{
-			pAddress = pAddressOfFuncs[i] + (ULONG_PTR)pBase;
-			DPRINT("ffgame: %s: %s found at address 0x%X", __FUNCTION__, pName, pAddress);
-			return pAddress;
+			if (strcmp(pName, pOrdinalName) == 0)
+			{
+				pAddress = pAddressOfFuncs[Ordinal] + (ULONG_PTR)pBase;
+				DPRINT("ffgame: %s: %s found, addr=0x%X ordinal=%d", __FUNCTION__, pName, pAddress, Ordinal);
+				return pAddress;
+			}
 		}
 	}
 
@@ -182,6 +189,7 @@ VOID NTAPI UserApcInject(IN PVOID pContext, IN PVOID pSystemArgument1, IN PVOID 
 {
 	PINJECT_BUFFER pBuffer = (PINJECT_BUFFER)pContext;
 	((NtLdrLoadDll)pBuffer->pLdrLoadDll)(pBuffer->pPathToFile, pBuffer->pFlags, pBuffer->pModuleFileName, pBuffer->pModuleHandle);
+	//pBuffer->Complete = CALL_COMPLETE;
 }
 
 VOID KernelApcInjectCallback(
@@ -272,10 +280,6 @@ NTSTATUS FFApcInject(IN HANDLE hProcess, IN PVOID pUserFunction, IN PVOID pUserA
 {
 	NTSTATUS Status = STATUS_SUCCESS;
 	PETHREAD pThread = NULL;
-	LARGE_INTEGER Interval =
-	{
-		.QuadPart = -100 * 10000
-	};
 
 	DPRINT("ffgame: %s: FFLookupProcessThread\n", __FUNCTION__);
 	Status = FFLookupProcessThread(hProcess, &pThread);
@@ -293,9 +297,7 @@ NTSTATUS FFApcInject(IN HANDLE hProcess, IN PVOID pUserFunction, IN PVOID pUserA
 		goto cleanup;
 	}
 
-	KeDelayExecutionThread(KernelMode, FALSE, &Interval);
-
-	DPRINT("ffgame: %s: Apc delivered, call complete\n", __FUNCTION__);
+	DPRINT("ffgame: %s: Apc delivered\n", __FUNCTION__);
 
 cleanup:
 

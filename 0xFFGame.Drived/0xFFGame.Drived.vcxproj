@@ -164,15 +164,19 @@
       <Optimization>MinSpace</Optimization>
       <TreatWarningAsError>false</TreatWarningAsError>
       <AssemblerOutput>All</AssemblerOutput>
-      <StructMemberAlignment>Default</StructMemberAlignment>
+      <StructMemberAlignment>8Bytes</StructMemberAlignment>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <AssemblerOutput>All</AssemblerOutput>
-      <StructMemberAlignment>Default</StructMemberAlignment>
+      <StructMemberAlignment>8Bytes</StructMemberAlignment>
       <Optimization>MinSpace</Optimization>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
