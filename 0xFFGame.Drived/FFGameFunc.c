@@ -112,74 +112,27 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 
 		memcpy((PVOID)pInjectBuffer->FullDllPath, (PVOID)uInjectDllPath.Buffer, uInjectDllPath.Length);
 
-
-		//00000	48 83 ec 28		sub	 rsp, 40; 00000028H
-		//; Line 28
-		//00004	4c 8b 49 20		mov	 r9, QWORD PTR[rcx + 32]
-		//00008	48 8b c1		mov	 rax, rcx
-		//0000b	4c 8b 41 18		mov	 r8, QWORD PTR[rcx + 24]
-		//0000f	48 8b 51 10		mov	 rdx, QWORD PTR[rcx + 16]
-		//00013	48 8b 49 08		mov	 rcx, QWORD PTR[rcx + 8]
-		//00017	ff 10			call	 QWORD PTR[rax]
-		//; Line 29
-		//00019	b8 01 00 00 00	mov	 eax, 1
-		//; Line 30
-		//0001e	48 83 c4 28		add	 rsp, 40; 00000028H
-		//00022	c3				ret	 0
-		UCHAR ProcCode[] = 
-		{
-			0
-		};
-
-	/*	00000	48 83 ec 48	 sub	 rsp, 72; 00000048H
-		00004	48 8b 05 00 00
-		00 00		 mov	 rax, QWORD PTR __security_cookie
-		0000b	48 33 c4	 xor	 rax, rsp
-		0000e	48 89 44 24 38	 mov	 QWORD PTR __$ArrayPad$[rsp], rax
-		; Line 35
-		00013	48 8d 44 24 30	 lea	 rax, QWORD PTR ThreadId$[rsp]
-		00018	45 33 c9	 xor	 r9d, r9d
-		0001b	48 89 44 24 28	 mov	 QWORD PTR[rsp + 40], rax
-		00020	4c 8d 05 00 00
-		00 00		 lea	 r8, OFFSET FLAT : ? Proc@@YAKPEAX@Z; Proc
-		00027	33 d2		 xor	 edx, edx
-		00029	c7 44 24 20 00
-		00 00 00	 mov	 DWORD PTR[rsp + 32], 0
-		00031	33 c9		 xor	 ecx, ecx
-		00033	ff 15 00 00 00
-		00		 call	 QWORD PTR __imp_CreateThread
-		; Line 36
-		00039	48 8b 4c 24 38	 mov	 rcx, QWORD PTR __$ArrayPad$[rsp]
-		0003e	48 33 cc	 xor	 rcx, rsp
-		00041	e8 00 00 00 00	 call	 __security_check_cookie
-		00046	48 83 c4 48	 add	 rsp, 72; 00000048H
-		0004a	c3		 ret	 0*/
 		UCHAR ApcCode[] =
-		{			
-			// V2
-			0x4C, 0x8B, 0x49, 0x20,
-			0x48, 0x8B, 0xC1,
-			0x4C, 0x8B, 0x41, 0x18,
-			0x48, 0x8B, 0x51, 0x10,
-			0x48, 0x8B, 0x49, 0x08,
-			0x48, 0xFF, 0x20
+		{
+			// prologue
+			0x40, 0x53,				// push	 rbx
+			0x48, 0x83, 0xEC, 0x20, // sub	 rsp, 32
 
-		/*	V1
-			0x40, 0x53, 
-			0x48, 0x83, 0xEC, 0x20, 
+			// call
+			0x4C, 0x8B, 0x49, 0x20, // mov	 r9, QWORD PTR [rcx+32]
+			0x48, 0x8B, 0xD9,		// mov	 rbx, rcx
+			0x4C, 0x8B, 0x41, 0x18, // mov	 r8, QWORD PTR [rcx+24]
+			0x48, 0x8B, 0x51, 0x10, // mov	 rdx, QWORD PTR [rcx+16]
+			0x48, 0x8B, 0x49, 0x08, // mov	 rcx, QWORD PTR [rcx+8]
+			0xFF, 0x13,				// call	 QWORD PTR [rbx]
 
-			0x4C, 0x8B, 0x49, 0x20, 
-			0x48, 0x8B, 0xD9, 
-			0x4C, 0x8B, 0x41, 0x18, 
-			0x48, 0x8B, 0x51, 0x10, 
-			0x48, 0x8B, 0x49, 0x08,
-			0xFF, 0x13,
+			// call complete
+			0xC7, 0x83, 0x40, 0x04, 0x00, 0x00, 0x7F, 0x1F, 0x3F, 0xCF, // mov	 DWORD PTR [rbx+1088], -817946753 ; CF3F1F7F
 
-			0xC6, 0x83, 0x40, 0x04, 0x00, 0x00, 0x7F,
-
-			0x48, 0x83, 0xC4, 0x20,
-			0x5B,
-			0xC3*/
+			// epilogue
+			0x48, 0x83, 0xC4, 0x20, // add	 rsp, 32
+			0x5B,					// pop	 rbx
+			0xC3					// ret	 0
 		};
 
 		PVOID ApcCodeAddress = (PVOID)((ULONGLONG)pInjectBuffer + sizeof(INJECT_BUFFER));

@@ -16,7 +16,7 @@ typedef struct _inject_buffer_t
 	UNICODE_STRING ModuleFileName;
 	WCHAR FullDllPath[512];
 	HANDLE ModuleHandle;
-	BOOLEAN Complete;
+	ULONG Complete;
 } INJECT_BUFFER, *PINJECT_BUFFER;
 #pragma pack(pop)
 
