@@ -187,6 +187,9 @@ VOID KernelApcPrepareCallback(
 
 VOID NTAPI UserApcInject(IN PVOID pContext, IN PVOID pSystemArgument1, IN PVOID pSystemArgument2)
 {
+	UNREFERENCED_PARAMETER(pSystemArgument1);
+	UNREFERENCED_PARAMETER(pSystemArgument2);
+
 	PINJECT_BUFFER pBuffer = (PINJECT_BUFFER)pContext;
 	((NtLdrLoadDll)pBuffer->pLdrLoadDll)(pBuffer->pPathToFile, pBuffer->pFlags, pBuffer->pModuleFileName, pBuffer->pModuleHandle);
 	pBuffer->Complete = CALL_COMPLETE;

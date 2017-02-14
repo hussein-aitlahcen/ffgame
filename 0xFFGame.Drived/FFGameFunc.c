@@ -105,7 +105,7 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 		pInjectBuffer->pPathToFile = NULL;
 		pInjectBuffer->pModuleHandle = &pInjectBuffer->ModuleHandle;
 		pInjectBuffer->pModuleFileName = &pInjectBuffer->ModuleFileName;
-	
+
 		pInjectBuffer->ModuleFileName.Buffer = (PWCHAR)&pInjectBuffer->FullDllPath;
 		pInjectBuffer->ModuleFileName.MaximumLength = uInjectDllPath.MaximumLength;
 		pInjectBuffer->ModuleFileName.Length = uInjectDllPath.Length;
