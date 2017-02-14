@@ -18,21 +18,20 @@ namespace _0xFFGame.Control
 {
     class Program
     {
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        struct Test
-        {
-            public int x;
-            public int y;
-            public int z;
-        }
+        private const string DSE = "dsefix.exe";
+        private const string DRIVER = "0xFFGame.Drived.sys";
+        private const string HOST = "0xFFGame.Host.dll";
+        private const string MANAGED = "0xFFGame.ManagedHost.dll";
 
         static void Main(string[] args)
         {
-            Process.Start("dsefix.exe");
-            using (var ffgame = new FFGameDriver(Path.GetFullPath("0xFFGame.Drived.sys")))
+            Process.Start(DSE);
+            using (var ffgame = new FFGameDriver(Path.GetFullPath(DRIVER)))
             {
-                var processId = (uint)Process.GetProcesses().First(p => args.Contains(p.ProcessName)).Id;
-                ffgame.InjectDll(new InjectDll(processId, Path.GetFullPath("0xFFGame.Host.dll")));
+                var process = Process.GetProcesses().First(p => args.Contains(p.ProcessName));
+                File.Copy(Path.GetFullPath(MANAGED),
+                    Path.Combine(Path.GetDirectoryName(process.MainModule.FileName), MANAGED), true);
+                ffgame.InjectDll(new InjectDll((uint)process.Id, Path.GetFullPath(HOST)));
             }
         }
     }

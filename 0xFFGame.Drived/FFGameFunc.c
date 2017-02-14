@@ -48,7 +48,7 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 	PVOID pModuleBase = NULL;
 	PLDR_LOADDLL pLdrLoadDll = 0;
 	PEPROCESS pProcess = NULL;
-	UNICODE_STRING uModuleName = RTL_CONSTANT_STRING(L"ntdll.dll");
+	UNICODE_STRING uNtdll = RTL_CONSTANT_STRING(L"ntdll.dll");
 	UNICODE_STRING uInjectDllPath;
 	KAPC_STATE KApcState;
 	BOOL Attached = FALSE;
@@ -73,17 +73,17 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 		DPRINT("ffgame: %s: pProcess NULL failed\n", __FUNCTION__);
 		goto cleanup;
 	}
-
+	
 	KeStackAttachProcess(pProcess, &KApcState);
 	Attached = TRUE;
 
-	Status = FFFindModuleBase(pProcess, &uModuleName, &pModuleBase);
+	Status = FFFindModuleBase(pProcess, &uNtdll, &pModuleBase);
 	if (NT_ERROR(Status))
 	{
 		DPRINT("ffgame: %s: FFFindModuleBase failed\n", __FUNCTION__);
 		goto cleanup;
 	}
-
+	
 	pLdrLoadDll = (PLDR_LOADDLL)FFFindModuleExport(pModuleBase, "LdrLoadDll");
 	if (!pLdrLoadDll)
 	{
@@ -91,6 +91,20 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 		goto cleanup;
 	}
 
+/*
+	PVOID pGetContextThread = FFFindModuleExport(pModuleBase, "NtGetContextThread");
+	if (!pGetContextThread)
+	{
+		DPRINT("ffgame: %s: FFFindModuleExport failed\n", __FUNCTION__);
+		goto cleanup;
+	}
+*/
+	//CONTEXT ThreadContext;
+	//ThreadContext.ContextFlags = CONTEXT_FULL;
+	//((NtGetContextThread)pGetContextThread)(KeGetCurrentThread(), &ThreadContext);
+
+	//DPRINT("ffgame: %s: RIP=%l\n", __FUNCTION__, ThreadContext.Rip);
+	
 	try
 	{
 		Status = FFAllocate(ZwCurrentProcess(), &pInjectBuffer, &AllocateSize);
@@ -134,7 +148,7 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 			0x5B,					// pop	 rbx
 			0xC3					// ret	 0
 		};
-
+		
 		PVOID ApcCodeAddress = (PVOID)((ULONGLONG)pInjectBuffer + sizeof(INJECT_BUFFER));
 		memcpy(ApcCodeAddress, &ApcCode, sizeof(ApcCode));
 
@@ -143,7 +157,7 @@ NTSTATUS FFInjectDll(IN PINJECT_DLL pInject)
 		FFApcInject(pInject->hTargetProcess, ApcCodeAddress, (PVOID)(ULONGLONG)pInjectBuffer);
 
 		SIZE_T i = 0;
-		while (pInjectBuffer->Complete != CALL_COMPLETE && i < 400)
+		while (pInjectBuffer->Complete != CALL_COMPLETE && i < 800)
 		{
 			KeDelayExecutionThread(KernelMode, FALSE, &Interval);
 			i++;

@@ -1,39 +1,12 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #include "stdafx.h"
 
-#define CALL_COMPLETE   0xCF3F1F7F
-
-typedef LONG(*LdrLoadDll)(PWSTR, PULONG, PVOID, PVOID*);
-
-#pragma pack(push, 1)
-typedef struct _inject_buffer_t
+extern "C"
 {
-	LdrLoadDll pLdrLoadDll;
-	PWCHAR pPathToFile;
-	PULONG pFlags;
-	PVOID pModuleFileName;
-	PHANDLE pModuleHandle;
-
-	PVOID ModuleFileName;
-	WCHAR FullDllPath[512];
-	HANDLE ModuleHandle;
-	BOOLEAN Complete;
-} INJECT_BUFFER, *PINJECT_BUFFER;
-#pragma pack(pop)
-
-
-DWORD WINAPI Proc(PVOID lpThreadParameter)
-{
-	PINJECT_BUFFER pBuffer = (PINJECT_BUFFER)lpThreadParameter;
-	((LdrLoadDll)pBuffer->pLdrLoadDll)(pBuffer->pPathToFile, pBuffer->pFlags, pBuffer->pModuleFileName, pBuffer->pModuleHandle);
-	return TRUE;
+	__declspec(dllimport) void LoadDomain();
 }
 
-VOID NTAPI TestInject(IN LPVOID pContext, IN LPVOID pSystemArgument1, IN LPVOID pSystemArgument2)
-{
-	DWORD ThreadId;
-	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Proc, pContext, 0, &ThreadId);
-}
+#pragma comment(lib, "../x64/Release/0xFFGame.ManagedHost.lib")
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -43,7 +16,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
-		MessageBox(NULL, L"FF the game please", L"0xFF", 0);
+		LoadDomain();
 		break;
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
